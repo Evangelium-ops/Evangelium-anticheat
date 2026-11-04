@@ -21,7 +21,7 @@ public class BaseConfigManager {
     @Getter
     private boolean printAlertsToConsole = false;
     @Getter
-    private String prefix = "&bGrim &8»";
+    private String prefix = "&bAC &8»";
     @Getter
     private String webhookNotEnabled;
     @Getter
@@ -67,7 +67,8 @@ public class BaseConfigManager {
         }
 
         printAlertsToConsole = config.getBooleanElse("alerts.print-to-console", true);
-        prefix = config.getStringElse("prefix", "&bGrim &8»");
+        prefix = config.getStringElse("prefix", "&bAC &8»");
+        if (ac.grim.grimac.utils.reflection.ACMode.unified()) prefix = prefix.replace("GrimAC", "AC").replace("Grim", "AC");
 
         webhookNotEnabled = config.getStringElse("webhook-not-enabled", "Discord webhooks are not enabled!");
         webhookTestMessage = config.getStringElse("webhook-test-message", "test message");

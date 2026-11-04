@@ -52,7 +52,7 @@ import org.incendo.cloud.bukkit.CloudBukkitCapabilities;
 import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.incendo.cloud.paper.LegacyPaperCommandManager;
 
-public final class GrimACBukkitLoaderPlugin extends JavaPlugin implements PlatformLoader {
+public final class GrimACBukkitLoaderPlugin extends io.wildsmp.anticheat.bukkit.AnticheatBukkitPlugin implements PlatformLoader {
     public static GrimACBukkitLoaderPlugin LOADER;
 
     private final LazyHolder<PlatformScheduler> scheduler = LazyHolder.simple(this::createScheduler);
@@ -77,6 +77,8 @@ public final class GrimACBukkitLoaderPlugin extends JavaPlugin implements Platfo
 
     @Override
     public void onLoad() {
+        try { ac.grim.grimac.utils.reflection.ACFiles.migrate(getDataFolder().toPath().getParent()); }
+        catch (java.io.IOException e) { throw new java.io.UncheckedIOException("Could not migrate AC engine settings", e); }
         LOADER = this;
         GrimAPI.INSTANCE.load(this, this.getBukkitInitTasks());
     }
@@ -97,11 +99,27 @@ public final class GrimACBukkitLoaderPlugin extends JavaPlugin implements Platfo
 
     @Override
     public void onEnable() {
+        if (!Boolean.getBoolean("launcher.licensed") || !Boolean.getBoolean("launcher.anticheat")
+                || !getServer().getPluginManager().isPluginEnabled("KnowledgeGate")) {
+            getLogger().severe("AC requires the verified KnowledgeLauncher and KnowledgeGate.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         GrimAPI.INSTANCE.start();
+        if (Boolean.getBoolean("launcher.anticheat.combat")) {
+            try { startCombat(); } catch (RuntimeException error) { failCombat(error); }
+        } else {
+            java.util.Objects.requireNonNull(getCommand("anticheat")).setExecutor((sender, command, label, args) -> {
+                sender.sendMessage("AC combat is disabled in launcher.properties."); return true;
+            });
+        }
+        getLogger().info("AC engines: movement=" + ac.grim.grimac.utils.reflection.ACMode.movementEnabled()
+                + ", combat=" + Boolean.getBoolean("launcher.anticheat.combat") + "; scheduler=" + GrimAPI.INSTANCE.getPlatform());
     }
 
     @Override
     public void onDisable() {
+        stopCombat();
         GrimAPI.INSTANCE.stop();
     }
 

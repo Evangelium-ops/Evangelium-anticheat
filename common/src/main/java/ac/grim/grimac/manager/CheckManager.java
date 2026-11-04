@@ -270,7 +270,9 @@ public class CheckManager implements BasicReloadable {
         for (AbstractProcessor processor : processors.values()) {
             if (processor instanceof AbstractCheck abstractCheck) {
                 checks.add(abstractCheck);
-                if (processor instanceof Check grimCheck && !grimCheck.isApplicable()) continue;
+                if (processor instanceof Check grimCheck && (!grimCheck.isApplicable()
+                        || !ac.grim.grimac.utils.reflection.ACMode.grimCheckEnabled(
+                        ac.grim.grimac.utils.reflection.ACMode.unified(), processor.getClass().getName()))) continue;
             }
 
             if (processor instanceof PacketReceiveListener packetReceiveListener) packetReceiveListeners.add(packetReceiveListener);

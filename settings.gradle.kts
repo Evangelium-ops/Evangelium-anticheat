@@ -87,3 +87,7 @@ include(":fabric:official")
 include(":fabric:official:mc261")
 
 if (file("workspace.gradle.kts").exists()) apply(from = "workspace.gradle.kts")
+
+include(":chronos:core", ":chronos:protocol", ":chronos:bukkit")
+
+include(":chronos:backend")

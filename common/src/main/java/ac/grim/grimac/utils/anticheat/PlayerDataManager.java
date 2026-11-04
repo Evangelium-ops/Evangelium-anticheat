@@ -66,6 +66,7 @@ public class PlayerDataManager {
     }
 
     public boolean shouldCheck(@NotNull User user) {
+        if (!ac.grim.grimac.utils.reflection.ACMode.movementEnabled()) return false;
         if (isExemptUser(user)) return false;
         if (!ChannelHelper.isOpen(user.getChannel())) return false;
 

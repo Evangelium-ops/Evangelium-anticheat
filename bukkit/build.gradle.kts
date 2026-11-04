@@ -128,12 +128,17 @@ dependencies {
     implementation(libs.adventure.platform.bukkit)
     implementation(libs.grim.bukkit.internal)
 
+    implementation(project(":chronos:bukkit"))
     implementation(project(":common"))
     shadow(project(":common"))
 }
 
 bukkit {
-    name = "GrimAC"
+    name = "AC"
+    depend = listOf("KnowledgeGate")
+    commands {
+        register("anticheat") { description = "AC remote combat status, alerts and reload" }
+    }
     author = "GrimAC"
     main = "ac.grim.grimac.platform.bukkit.GrimACBukkitLoaderPlugin"
     website = "https://grim.ac/"
@@ -141,7 +146,7 @@ bukkit {
     foliaSupported = true
 
     if (!BuildConfig.shadePE) {
-        depend = listOf("packetevents")
+        depend = listOf("KnowledgeGate", "packetevents")
     }
 
     softDepend = listOf(
@@ -166,6 +171,9 @@ bukkit {
     )
 
     permissions {
+        for (node in listOf("anticheat.command.reload", "anticheat.command.alerts", "anticheat.command.status")) {
+            register(node) { default = Permission.Default.OP }
+        }
         register("grim.alerts") {
             description = "Receive alerts for violations"
             default = Permission.Default.OP
@@ -293,6 +301,32 @@ tasks {
 
         manifest {
             attributes["paperweight-mappings-namespace"] = "mojang"
+        }
+    }
+}
+
+tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
+    archiveFileName.set("AC.jar")
+    minimize { exclude(project(":chronos:bukkit")); exclude(project(":chronos:core")); exclude(project(":chronos:protocol")); exclude(dependency("io.grpc:.*:.*")); exclude(dependency("com.google.protobuf:.*:.*")) }
+    // gRPC providers are loaded by ServiceLoader, not direct class references.
+    if (BuildConfig.relocate) {
+        relocate("io.grpc", "ac.grim.grimac.shaded.grpc")
+        relocate("com.google.protobuf", "ac.grim.grimac.shaded.protobuf")
+    }
+}
+
+tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
+    // Service descriptors must reach the merger before duplicate filtering, including gRPC DNS/pick_first.
+    filesMatching("META-INF/services/**") { duplicatesStrategy = DuplicatesStrategy.INCLUDE }
+    doLast {
+        val prefix = if (BuildConfig.relocate) "ac.grim.grimac.shaded.grpc" else "io.grpc"
+        ZipFile(archiveFile.get().asFile).use { zip ->
+            fun service(name: String): String {
+                val entry = zip.getEntry("META-INF/services/$prefix.$name") ?: error("AC is missing gRPC $name")
+                return zip.getInputStream(entry).bufferedReader().use { it.readText() }
+            }
+            check(service("NameResolverProvider").contains(".internal.DnsNameResolverProvider")) { "AC is missing the DNS resolver provider" }
+            check(service("LoadBalancerProvider").contains("PickFirstLoadBalancerProvider")) { "AC is missing the pick_first load-balancer provider" }
         }
     }
 }

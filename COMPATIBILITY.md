@@ -36,14 +36,19 @@ Configuring only the requested Bukkit/shared projects avoids the unrelated Fabri
 - Shared tests: 54 passed, including Bedrock marker validation and four deterministic latency-queue regressions.
 - Matching launcher: 167 tests passed, including signed forwarding contents, conflicting-marker removal and skin-property preservation.
 - Local native protocol test: 17.22-block walk and backend restart passed; Java and malformed-marker sessions remained tracked, valid-marker sessions were exempt, and there were no Simulation/Timer violations.
-- Controlled network-latency test: measured 615–701 ms transaction ping with jitter and a 250 ms upstream spike. A 16.79-block walk produced no Simulation or Timer violations. The delayed restart transferred sessions without disconnecting, but both Java bots then received one GroundSpoof violation; that restart case remains unresolved and is not a clean pass.
+- Controlled network-latency test: measured 615â€“701 ms transaction ping with jitter and a 250 ms upstream spike. A 16.79-block walk produced no Simulation or Timer violations. The delayed restart transferred sessions without disconnecting, but both Java bots then received one GroundSpoof violation; that restart case remains unresolved and is not a clean pass.
 
 These use protocol bots and a local-only profile fixture. They are not physical Bedrock-device or stock Java-client tests. The fixture records all violations; the bot's known yaw-wrapping `AimModulo360` alert is separately identified and is not treated as a movement/Timer success criterion. No related production check is disabled.
 
-The anticheat and probe are not automatically shipped or deployed by this task.
+The unified AC integration now bundles AC.jar in KnowledgeLauncher when anticheat=true. The diagnostic probe stays test-only. Publishing a tested launcher release, deploying the updated Chronos backend, and installing the VPS/router route are separate deployment steps.
 
 ## Post/use-item report
 
 The owner supplied `SirGrem failed Post (x20) use item v1.21.11`. The item and client distribution are unknown. The existing movement harness does not exercise item use and did not reproduce this flag. No Post exemption or detection change has been made.
 
 Upstream issue [2759](https://github.com/GrimAnticheat/Grim/issues/2759) reports the same alert for tridents. Its discussion ended after the maintainer advised using a vanilla client and the reporter thanked them. This is a diagnostic lead, not proof that this owner's report has the same cause. A stock Java 1.21.11 comparison or a reproducible packet trace is still needed. High latency by itself does not reorder bytes on the TCP connection; none of the completed tests establishes a cause for this specific alert.
+
+
+## Unified AC
+
+See docs/superpowers/specs/2026-11-04-unified-ac-design.md. One AC plugin combines our movement fork and remote combat adapter with independent switches, single Evangelium licensing, isolated customer state, and tested key-server updates. The shaded build verifies gRPC DNS and pick_first provider descriptors before accepting AC.jar.

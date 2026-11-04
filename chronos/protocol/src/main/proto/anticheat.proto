@@ -1,0 +1,229 @@
+syntax = "proto3";
+
+package anticheat;
+
+option java_package = "io.wildsmp.anticheat.protocol";
+option java_multiple_files = true;
+
+// Sent once a player finishes joining the Minecraft server.
+message PlayerJoin {
+  string player_id = 1;   // UUID.toString()
+  string player_name = 2;
+}
+
+// Sent once a player disconnects. Does not imply the backend should forget the player's
+// violation history immediately - see backend's PlayerRegistry idle-eviction (Task 7).
+message PlayerQuit {
+  string player_id = 1;
+}
+
+message MovementPacket {
+  string player_id = 1;
+  double x = 2;
+  double y = 3;
+  double z = 4;
+  float yaw = 5;
+  float pitch = 6;
+  bool on_ground = 7;
+  int64 tick = 8; // the originating server's tick counter at capture time
+  // Added for movement prediction - computed bukkit-side once per packet from data already
+  // available locally (block type, active effects, sprint/sneak/swim/glide state). Encoded as a
+  // small int rather than a nested message to keep this cheap on the wire.
+  int32 terrain_kind = 9;      // TerrainKind.ordinal()
+  int32 speed_level = 10;
+  int32 slowness_level = 11;
+  int32 jump_boost_level = 12;
+  bool levitation = 13;
+  bool slow_falling = 14;
+  bool sprinting = 15;
+  bool sneaking = 16;
+  bool swimming = 17;
+  bool gliding = 18;
+  // This player's current estimated tick-lag, computed bukkit-side from the SAME TickSyncTracker
+  // ReachCheck already uses (via PlayerDataManager.tickSync(playerId)) - ping-based tolerance has
+  // to be computed where the live tracker actually lives (bukkit), then sent as a derived value,
+  // exactly like AttackPacket's perceived_tick already is. The backend never holds a live
+  // TickSyncTracker instance of its own.
+  double estimated_tick_lag = 19;
+  // Player#getAllowFlight() - true for creative/spectator or any plugin-granted flight. Airborne
+  // movement checks (FlyA, SpiderA) exempt this player entirely; a legitimately flying player
+  // isn't a fly hack by definition.
+  bool flight_allowed = 20;
+  // True for a player's whole flight/fall arc after a real server-driven velocity impulse (wind
+  // charge, explosion, engine push) - see LaunchImpulseListener. FlyA and TimerA exempt this
+  // entirely; the resulting burst of displacement isn't evidence of anything.
+  bool recently_launched = 21;
+}
+
+// target_id and perceived_tick are resolved bukkit-side (real entity lookup, real tick-sync
+// round trip) before this is ever sent - the backend only sees already-resolved UUIDs/ticks.
+message AttackPacket {
+  string attacker_id = 1;
+  string target_id = 2;
+  int64 perceived_tick = 3;
+}
+
+// Drives Check.onTick() for every named player once per originating server tick - replaces the
+// in-process per-tick loop the old in-process bukkit plugin ran directly.
+message TickHeartbeat {
+  repeated string online_player_ids = 1;
+}
+
+// A real Bukkit EntityDamageByEntityEvent, not a client-reported packet - carries the server's own
+// authoritative damage output so checks can compare it against what this anticheat independently
+// tracked (e.g. real fall distance), which a hacked client can't lie about. Bukkit-side only sends
+// this for damage causes a check actually cares about (currently: mace hits only).
+message DamagePacket {
+  string attacker_id = 1;
+  string victim_id = 2;
+  double damage = 3;
+  int64 tick = 4;
+}
+
+// A real Bukkit inventory/resurrect event, not a client-reported packet - bukkit-side has already
+// confirmed no legitimate InventoryClickEvent or PlayerSwapHandItemsEvent explains this offhand
+// totem before this is ever sent, so its mere existence is the evidence. No threshold value to
+// carry - unlike DamagePacket, there's no independent way to re-derive this backend-side at all,
+// since inventory contents aren't otherwise observable.
+message AutoTotemPacket {
+  string player_id = 1;
+  int64 tick = 2;
+}
+
+// A real Bukkit EntityDamageEvent(cause=FALL) outcome (or its confirmed absence despite a tracked
+// fall distance that should have produced damage) - not a client-reported packet, same reasoning as
+// DamagePacket. Only sent when bukkit's own locally-tracked fall distance (LastKnownPose.
+// peakYSinceGrounded, the same field MaceDamageListener already reads) says damage SHOULD have
+// applied but didn't (or was suspiciously low).
+message FallDamagePacket {
+  string player_id = 1;
+  double tracked_fall_distance = 2;
+  int64 tick = 3;
+}
+
+// A real Bukkit BlockPlaceEvent, not a client-reported packet - carries only the raw fact (who
+// placed what block, where, when). No geometry is computed bukkit-side: the backend independently
+// re-derives whether the placement was actually within the player's real look direction/reach,
+// using the same last-known yaw/pitch/position MovementSample already carries - same "detection
+// logic never ships in the bukkit jar" reasoning as every other check.
+message BlockPlacePacket {
+  string player_id = 1;
+  int32 block_x = 2;
+  int32 block_y = 3;
+  int32 block_z = 4;
+  int64 tick = 5;
+}
+
+message ClientMessage {
+  oneof payload {
+    PlayerJoin join = 1;
+    PlayerQuit quit = 2;
+    MovementPacket movement = 3;
+    AttackPacket attack = 4;
+    TickHeartbeat heartbeat = 5;
+    Hello hello = 6;
+    DamagePacket damage = 7;
+    AutoTotemPacket auto_totem = 8;
+    FallDamagePacket fall_damage = 9;
+    BlockPlacePacket block_place = 10;
+  }
+}
+
+// The punishment handoff point, carried over the wire back to whichever connection currently
+// owns that player. Mirrors core.violation.Violation field-for-field.
+message Verdict {
+  string player_id = 1;
+  string player_name = 2;
+  string check_name = 3;
+  string category = 4; // CheckCategory.name()
+  double vl = 5;
+  double threshold = 6;
+  string details = 7;
+  int64 timestamp_millis = 8;
+}
+
+// Pushed by an operator action on the license panel ("Expire Plugin") to make one specific
+// connected server immediately re-check for an update, instead of waiting for its periodic timer -
+// unsigned, since forcing an early update check isn't a security-sensitive operation the way
+// approve/revoke are.
+message ForceUpdateCheck {}
+
+// Pushed on a high-confidence movement violation to teleport the player back to their last
+// legitimate position - gated at a stricter confidence threshold than the plain VL flag (see the
+// design spec's open item on this), so an occasional borderline reading doesn't visibly
+// rubber-band a legitimate player.
+message CorrectPosition {
+  string player_id = 1;
+  double x = 2;
+  double y = 3;
+  double z = 4;
+}
+
+message ServerMessage {
+  oneof payload {
+    Verdict verdict = 1;
+    Assigned assigned = 2;
+    PendingStatus pending = 3;
+    SignedMessage signed = 4;
+    ForceUpdateCheck force_update_check = 5;
+    CorrectPosition correct_position = 6;
+    LauncherApproval launcher_approval = 7;
+  }
+}
+
+// Sent periodically by bukkit to ask whether the jar it's running differs from what backend is
+// currently serving - compared by SHA-256, not a version number (see the design spec's Context).
+message UpdateCheckRequest {}
+
+message UpdateCheckResponse {
+  string sha256 = 1;   // empty if backend has no jar configured to serve - means "no update ever"
+  int64 size_bytes = 2;
+}
+
+message JarDownloadRequest {}
+
+// Streamed in fixed-size chunks (backend/PluginJarService controls the chunk size) so a ~20MB
+// shaded jar never has to fit in one gRPC message.
+message JarChunk {
+  bytes data = 1;
+}
+
+// Sent once, on every reconnect, carrying whatever code this install already has (empty on a
+// genuinely first-ever connect). Rides the existing Stream connection - no second channel.
+message Hello {
+  string code = 1;
+  string instance_id = 2;    // random UUID, generated once by bukkit, persisted in license.yml
+  string mod_version = 3;
+  string mc_version = 4;
+  string server_name = 5;
+  string launcher_proof = 6;
+}
+
+// Reply to a Hello with no code (or an unrecognized one) - a fresh code was minted.
+message Assigned {
+  string code = 1;
+}
+
+// Reply to a Hello whose code exists but isn't yet approved.
+message PendingStatus {
+  string code = 1;
+}
+
+// Carries both "approved" and "revoked" - type discriminates. Signed over the canonical string
+// type + "\n" + code + "\n" + seq + "\n" + issued_at_millis (Ed25519).
+message SignedMessage {
+  string type = 1;            // "approved" | "revoked"
+  string code = 2;
+  int64 seq = 3;
+  int64 issued_at_millis = 4;
+  bytes signature = 5;
+}
+
+service AnticheatService {
+  // One call per Minecraft server; multiplexes every online player's packets both ways.
+  rpc Stream(stream ClientMessage) returns (stream ServerMessage);
+  rpc CheckForUpdate(UpdateCheckRequest) returns (UpdateCheckResponse);
+  rpc DownloadPluginJar(JarDownloadRequest) returns (stream JarChunk);
+}
+
+message LauncherApproval { string instance = 1; int64 expires_millis = 2; }

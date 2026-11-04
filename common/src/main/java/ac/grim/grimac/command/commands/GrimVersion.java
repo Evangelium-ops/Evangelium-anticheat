@@ -141,7 +141,7 @@ public class GrimVersion implements BuildableCommand {
     @Override
     public void register(CommandManager<Sender> commandManager, CloudPlatformCommandArguments arguments) {
         commandManager.command(
-                commandManager.commandBuilder("grim", "grimac")
+                commandManager.commandBuilder("ac", "grim", "grimac")
                         .literal("version")
                         .permission("grim.version")
                         .handler(this::handleVersion)
@@ -150,6 +150,11 @@ public class GrimVersion implements BuildableCommand {
 
     private void handleVersion(@NotNull CommandContext<Sender> context) {
         Sender sender = context.sender();
+        if (ac.grim.grimac.utils.reflection.ACMode.unified()) {
+            sender.sendMessage(Component.text("AC " + GrimAPI.INSTANCE.getExternalAPI().getGrimVersion()
+                    + " — tested AC updates are installed by KnowledgeLauncher from the key server.", NamedTextColor.AQUA));
+            return;
+        }
         checkForUpdatesAsync(sender);
     }
 
