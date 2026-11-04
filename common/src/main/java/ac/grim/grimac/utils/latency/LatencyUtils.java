@@ -24,12 +24,22 @@ public class LatencyUtils {
     }
 
     public void addRealTimeTask(int transaction, Runnable runnable) {
-        if (player.lastTransactionReceived.get() >= transaction) { // If the player already responded to this transaction
-            runnable.run();
-            return;
-        }
         synchronized (this) {
-            transactionMap.add(new IntToObjectPair<>(transaction, runnable));
+            // The reply can arrive while a region thread is waiting to acquire this lock.
+            if (player.lastTransactionReceived.get() >= transaction) {
+                runnable.run();
+                return;
+            }
+            // The drain stops at future transactions, so insertion must preserve transaction order.
+            // Start at the tail: normal in-order insertion remains constant-time, and equal IDs stay FIFO.
+            ListIterator<IntToObjectPair<Runnable>> iterator = transactionMap.listIterator(transactionMap.size());
+            while (iterator.hasPrevious()) {
+                if (iterator.previous().first() <= transaction) {
+                    iterator.next();
+                    break;
+                }
+            }
+            iterator.add(new IntToObjectPair<>(transaction, runnable));
         }
     }
 

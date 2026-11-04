@@ -8,6 +8,7 @@ import ac.grim.grimac.platform.api.player.PlatformPlayer;
 import ac.grim.grimac.platform.api.player.PlatformPlayerCache;
 import ac.grim.grimac.utils.chunks.ChunkSectionCache;
 import ac.grim.grimac.utils.reflection.GeyserUtil;
+import ac.grim.grimac.utils.reflection.LauncherProfile;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.netty.channel.ChannelHelper;
 import com.github.retrooper.packetevents.protocol.player.User;
@@ -70,7 +71,7 @@ public class PlayerDataManager {
 
         if (user.getUUID() != null) {
             // Bedrock players don't have Java movement
-            if (GeyserUtil.isBedrockPlayer(user.getUUID())) {
+            if (LauncherProfile.isBedrockPlayer(user) || GeyserUtil.isBedrockPlayer(user.getUUID())) {
                 exemptUser(user);
                 return false;
             }
