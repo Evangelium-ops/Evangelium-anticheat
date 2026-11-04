@@ -41,3 +41,9 @@ Configuring only the requested Bukkit/shared projects avoids the unrelated Fabri
 These use protocol bots and a local-only profile fixture. They are not physical Bedrock-device or stock Java-client tests. The fixture records all violations; the bot's known yaw-wrapping `AimModulo360` alert is separately identified and is not treated as a movement/Timer success criterion. No related production check is disabled.
 
 The anticheat and probe are not automatically shipped or deployed by this task.
+
+## Post/use-item report
+
+The owner supplied `SirGrem failed Post (x20) use item v1.21.11`. The item and client distribution are unknown. The existing movement harness does not exercise item use and did not reproduce this flag. No Post exemption or detection change has been made.
+
+Upstream issue [2759](https://github.com/GrimAnticheat/Grim/issues/2759) reports the same alert for tridents. Its discussion ended after the maintainer advised using a vanilla client and the reporter thanked them. This is a diagnostic lead, not proof that this owner's report has the same cause. A stock Java 1.21.11 comparison or a reproducible packet trace is still needed. High latency by itself does not reorder bytes on the TCP connection; none of the completed tests establishes a cause for this specific alert.
