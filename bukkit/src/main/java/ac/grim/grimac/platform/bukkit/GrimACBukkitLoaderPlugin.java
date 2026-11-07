@@ -100,8 +100,8 @@ public final class GrimACBukkitLoaderPlugin extends io.wildsmp.anticheat.bukkit.
     @Override
     public void onEnable() {
         if (!Boolean.getBoolean("launcher.licensed") || !Boolean.getBoolean("launcher.anticheat")
-                || !getServer().getPluginManager().isPluginEnabled("KnowledgeGate")) {
-            getLogger().severe("AC requires the verified KnowledgeLauncher and KnowledgeGate.");
+                || !getServer().getPluginManager().isPluginEnabled("EvangeliumGate")) {
+            getLogger().severe("AC requires the verified KnowledgeLauncher and EvangeliumGate.");
             getServer().getPluginManager().disablePlugin(this);
             return;
         }

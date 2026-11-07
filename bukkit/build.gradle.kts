@@ -135,7 +135,7 @@ dependencies {
 
 bukkit {
     name = "AC"
-    depend = listOf("KnowledgeGate")
+    depend = listOf("EvangeliumGate")
     commands {
         register("anticheat") { description = "AC remote combat status, alerts and reload" }
     }
@@ -146,7 +146,7 @@ bukkit {
     foliaSupported = true
 
     if (!BuildConfig.shadePE) {
-        depend = listOf("KnowledgeGate", "packetevents")
+        depend = listOf("EvangeliumGate", "packetevents")
     }
 
     softDepend = listOf(
