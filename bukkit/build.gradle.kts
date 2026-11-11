@@ -128,7 +128,7 @@ dependencies {
     implementation(libs.adventure.platform.bukkit)
     implementation(libs.grim.bukkit.internal)
 
-    implementation(project(":chronos:bukkit"))
+    implementation(project(":evac:bukkit"))
     implementation(project(":common"))
     shadow(project(":common"))
 }
@@ -307,7 +307,7 @@ tasks {
 
 tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
     archiveFileName.set("AC.jar")
-    minimize { exclude(project(":chronos:bukkit")); exclude(project(":chronos:core")); exclude(project(":chronos:protocol")); exclude(dependency("io.grpc:.*:.*")); exclude(dependency("com.google.protobuf:.*:.*")) }
+    minimize { exclude(project(":evac:bukkit")); exclude(project(":evac:core")); exclude(project(":evac:protocol")); exclude(dependency("io.grpc:.*:.*")); exclude(dependency("com.google.protobuf:.*:.*")) }
     // gRPC providers are loaded by ServiceLoader, not direct class references.
     if (BuildConfig.relocate) {
         relocate("io.grpc", "ac.grim.grimac.shaded.grpc")

@@ -11,10 +11,10 @@ class ACFilesTest {
   Files.writeString(plugins.resolve("ChronosAC/license.yml"),"test-instance: preserve");
   ACFiles.migrate(plugins);
   assertEquals("movement: saved",Files.readString(plugins.resolve("AC/config.yml")));
-  assertEquals("backend: configured",Files.readString(plugins.resolve("AC/chronos.yml")));
+  assertEquals("backend: configured",Files.readString(plugins.resolve("AC/evac.yml")));
   assertEquals("test-instance: preserve",Files.readString(plugins.resolve("AC/license.yml")));
-  Files.writeString(plugins.resolve("AC/chronos.yml"),"new settings");ACFiles.migrate(plugins);
-  assertEquals("new settings",Files.readString(plugins.resolve("AC/chronos.yml")));
+  Files.writeString(plugins.resolve("AC/evac.yml"),"new settings");ACFiles.migrate(plugins);
+  assertEquals("new settings",Files.readString(plugins.resolve("AC/evac.yml")));
   assertEquals("backend: configured",Files.readString(plugins.resolve("ChronosAC/config.yml")));
  }
 }

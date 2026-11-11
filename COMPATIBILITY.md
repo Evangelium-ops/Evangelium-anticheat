@@ -40,7 +40,7 @@ Configuring only the requested Bukkit/shared projects avoids the unrelated Fabri
 
 These use protocol bots and a local-only profile fixture. They are not physical Bedrock-device or stock Java-client tests. The fixture records all violations; the bot's known yaw-wrapping `AimModulo360` alert is separately identified and is not treated as a movement/Timer success criterion. No related production check is disabled.
 
-The unified AC integration now bundles AC.jar in KnowledgeLauncher when anticheat=true. The diagnostic probe stays test-only. Publishing a tested launcher release, deploying the updated Chronos backend, and installing the VPS/router route are separate deployment steps.
+The unified AC integration now bundles AC.jar in KnowledgeLauncher when anticheat=true. The diagnostic probe stays test-only. Publishing a tested launcher release, deploying the updated EVAC backend, and installing the VPS/router route are separate deployment steps.
 
 ## Post/use-item report
 

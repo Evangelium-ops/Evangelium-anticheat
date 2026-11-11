@@ -1,0 +1,17 @@
+name: EVAC
+version: ${version}
+main: io.wildsmp.anticheat.bukkit.AnticheatBukkitPlugin
+api-version: "1.21"
+folia-supported: true
+depend: [packetevents]
+commands:
+  anticheat:
+    description: Core EVAC commands.
+    usage: /anticheat <reload|alerts|status>
+permissions:
+  anticheat.command.reload:
+    default: op
+  anticheat.command.alerts:
+    default: op
+  anticheat.command.status:
+    default: op
