@@ -1,3 +1,13 @@
+# Project: Evangelium anticheat (GrimAC fork)
+
+This is the source of the anticheat that ships with [Project: Evangelium](https://evangelium.cc), published under the GPL-3.0 licence of
+[GrimAC](https://github.com/GrimAnticheat/Grim), which it is based on. Our changes are in the commits after Grim's own history, mostly
+under `evac/` (the EVAC plugin side). The EVAC backend server is a separate program and is not part of this repository.
+
+Questions: support@evangelium.cc
+
+---
+
 <div align="center">
  <h1>GrimAC</h1>
 
