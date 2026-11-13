@@ -90,4 +90,3 @@ if (file("workspace.gradle.kts").exists()) apply(from = "workspace.gradle.kts")
 
 include(":evac:core", ":evac:protocol", ":evac:bukkit")
 
-include(":evac:backend")
