@@ -127,6 +127,10 @@ public class PunishmentManager implements ConfigReloadable {
 
     public boolean handleAlert(GrimPlayer player, Supplier<String> verbose, Check check) {
         boolean sentDebug = false;
+        // Evangelium: one stray flag is not worth staff attention. Alerts ([alert] and [proxy]) wait until this check has
+        // flagged 3 times within 10 seconds (bursts). That rule replaces the command's own threshold; its interval
+        // still spaces the alerts while the burst lasts. 0 = not in a burst, 1 = the flag that completed it.
+        final int burst = bursts.count(check, TimeUnit.NANOSECONDS.toMillis(System.nanoTime()));
 
         // Check commands
         for (PunishGroup group : groups) {
@@ -144,15 +148,20 @@ public class PunishmentManager implements ConfigReloadable {
                         String listenerCmd = replaceAlertPlaceholders(command.command, vl, check, verboseForListeners);
                         verboseListeners = GrimAPI.INSTANCE.getAlertManager().sendVerbose(MessageUtil.miniMessage(listenerCmd), null);
                     }
-                    if (violationCount >= command.threshold) {
-                        boolean shouldRun = command.interval == 0
+                    final boolean gated = command.command.equals("[alert]") || command.command.equals("[proxy]");
+                    if (gated ? burst > 0 : violationCount >= command.threshold) {
+                        boolean shouldRun = gated
+                                ? burst == 1 || (command.interval > 0 && (burst - 1) % command.interval == 0)
+                                : command.interval == 0
                                 ? command.executeCount == 0
                                 : violationCount >= command.nextBoundary;
                         if (shouldRun) {
                             String renderedVerbose = safeGet(verbose);
                             String cmd = replaceAlertPlaceholders(command.command, vl, check, renderedVerbose);
                             boolean canceled = COMMAND_CHANNEL.fire(player, check, renderedVerbose, cmd);
-                            if (command.interval == 0) {
+                            if (gated) {
+                                // spaced by the burst count above
+                            } else if (command.interval == 0) {
                                 command.executeCount++;
                             } else {
                                 advanceBoundary(command, violationCount);
@@ -216,7 +225,11 @@ public class PunishmentManager implements ConfigReloadable {
         command.nextBoundary += ((violationCount - command.nextBoundary) / command.interval + 1) * command.interval;
     }
 
+    // Evangelium: alerts wait for 3 flags of one check within 10 seconds (see handleAlert)
+    private final FlagBurst<AbstractCheck> bursts = new FlagBurst<>(3, 10_000);
+
     public void handleViolation(Check check) {
+        bursts.note(check, TimeUnit.NANOSECONDS.toMillis(System.nanoTime()));
         for (PunishGroup group : groups) {
             if (group.checks.contains(check)) {
                 long currentTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
